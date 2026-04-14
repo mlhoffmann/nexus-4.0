@@ -24,7 +24,7 @@ O NEXUS 4.0 é um sistema multi-agente que simula uma **sala de guerra virtual**
 └──────┬─────────────────┬──────────────────┬─────────────────┘
        │                 │                  │
 ┌──────▼──────┐  ┌───────▼───────┐  ┌───────▼──────┐
-│  Evolution  │  │   Streamlit   │  │   Grafana    │
+│  WhatsApp   │  │   Streamlit   │  │   Grafana    │
 │  API (WA)   │  │   Chat UI     │  │  Dashboards  │
 │  :8085      │  │   :8501       │  │  :3000       │
 └──────┬──────┘  └───────┬───────┘  └───────┬──────┘
@@ -78,7 +78,7 @@ cp .env.example .env
 # Sistema completo (sem WhatsApp)
 docker compose up -d
 
-# Com WhatsApp (Evolution API)
+# Com WhatsApp (Meta Cloud API)
 docker compose --profile whatsapp up -d
 ```
 
@@ -149,7 +149,7 @@ streamlit run dashboard/streamlit_app.py
 | Banco de dados | PostgreSQL 16 | 5432 |
 | Dashboards | **Grafana 11** | 3000 |
 | Chat UI | Streamlit | 8501 |
-| WhatsApp | Evolution API | 8085 |
+| WhatsApp | Meta Cloud API | via webhook |
 | Workflows | N8N | 5678 |
 | Infra | Docker Compose | — |
 
@@ -221,7 +221,7 @@ nexus-4.0/
 │   ├── ingest.py               # Pipeline de ingestão
 │   └── retriever.py            # Retriever com MMR
 ├── whatsapp/
-│   └── webhook_handler.py      # Integração Evolution API
+│   └── webhook_handler.py      # Integração Meta Cloud API
 ├── dashboard/
 │   └── streamlit_app.py        # Chat UI + consulta direta
 ├── grafana/

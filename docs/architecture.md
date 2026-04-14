@@ -163,7 +163,7 @@ O sistema e definido em um unico `docker-compose.yml` com 8 servicos. Todos os v
 | `nexus-api`        | Build local (`Dockerfile`)    | `8080`        | API FastAPI + agentes                         | postgres, chromadb |
 | `nexus-chat`       | Build local (`Dockerfile.chat`)| `8501`       | Interface Streamlit                           | nexus-api   |
 | `nexus-grafana`    | `grafana/grafana:11.1.0`      | `3000`        | Dashboards operacionais                       | postgres    |
-| `nexus-whatsapp`   | `atendai/evolution-api:latest`| `8085`        | WhatsApp (Evolution API, opcional, profile)   | postgres    |
+| `nexus-whatsapp`   | `atendai/evolution-api:latest`| `8085`        | WhatsApp (Meta Cloud API, opcional, profile)   | postgres    |
 
 ### 3.2 Volumes Persistentes
 
@@ -1450,7 +1450,7 @@ docker compose exec nexus-api python -m rag.ingest
 | 8501   | Chat UI           | http://localhost:8501              |
 | 5678   | N8N               | http://localhost:5678              |
 | 3000   | Grafana           | http://localhost:3000              |
-| 8085   | Evolution API     | (opcional, profile whatsapp)       |
+| 8085   | Meta Cloud API     | (opcional, profile whatsapp)       |
 +--------+-------------------+-----------------------------------+
 ```
 
