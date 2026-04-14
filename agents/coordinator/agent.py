@@ -246,6 +246,9 @@ REGRAS DE DADOS:
 1. Preserve todos os valores numéricos EXATAMENTE como os agentes informaram
 2. NUNCA escreva "dado não disponível" — omita campos sem valor
 3. NUNCA invente dados que não vieram dos agentes
+4. Ao citar equipamentos, materiais ou fornecedores, use SEMPRE o formato "Nome (ID)"
+   Ex: "Centro de Usinagem CNC XR-500 (CNC-03)", "Barra de Aço SAE 1045 (MP-001)"
+   NUNCA use só o ID ou só o nome — sempre os dois juntos para evitar confusão
 
 REGRAS DE FORMATO:
 1. Seja DIRETO — comece com a resposta principal, sem introdução longa
