@@ -88,7 +88,18 @@ class BaseAgent(ABC):
 
     async def think(self, input_message: str, context: dict[str, Any] | None = None) -> str:
         """Processa uma entrada e retorna a resposta do agente."""
-        data_integrity_prompt = """## REGRA CRÍTICA DE INTEGRIDADE DE DADOS
+        from datetime import datetime
+        now = datetime.now()
+        weekday_names = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
+        current_weekday = weekday_names[now.weekday()]
+
+        data_integrity_prompt = f"""## DATA E CONTEXTO TEMPORAL
+Hoje é {now.strftime('%d/%m/%Y')} ({current_weekday}), {now.strftime('%H:%M')}.
+Quando o gestor mencionar datas relativas (ex: "para sexta", "esta semana", "amanhã"),
+calcule os dias úteis restantes a partir de HOJE e use esse número na tool get_capacity_report.
+Ex: se hoje é quarta e o prazo é sexta → 2 dias úteis (use days=2).
+
+## REGRA CRÍTICA DE INTEGRIDADE DE DADOS
 
 ### Princípio fundamental
 Você tem DUAS fontes de verdade: (1) dados retornados pelas ferramentas (tools) e
