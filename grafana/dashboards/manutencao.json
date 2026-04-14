@@ -1,0 +1,269 @@
+{
+  "uid": "nexus-manutencao",
+  "title": "NEXUS 4.0 — Manutenção Preditiva",
+  "tags": ["nexus", "manutencao", "sensores", "iot"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "equipment",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "" },
+        "query": "SELECT id FROM equipment ORDER BY id",
+        "current": { "text": "CNC-03", "value": "CNC-03" },
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Health Score — $equipment",
+      "type": "gauge",
+      "gridPos": { "h": 7, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT health_score AS \"Health\" FROM equipment WHERE id = '$equipment'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 50 },
+              { "color": "yellow", "value": 70 },
+              { "color": "green", "value": 85 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "OEE — $equipment",
+      "type": "gauge",
+      "gridPos": { "h": 7, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT oee_pct AS \"OEE\" FROM equipment WHERE id = '$equipment'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 65 },
+              { "color": "green", "value": 85 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Status do Equipamento",
+      "type": "stat",
+      "gridPos": { "h": 7, "w": 5, "x": 10, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN status = 'operational' THEN 1 WHEN status = 'atenção' THEN 2 ELSE 3 END AS \"Status\" FROM equipment WHERE id = '$equipment'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": { "color": "green", "text": "OPERACIONAL" },
+                "2": { "color": "orange", "text": "ATENÇÃO" },
+                "3": { "color": "red", "text": "OFFLINE" }
+              }
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 2 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Dias desde Última Manutenção",
+      "type": "stat",
+      "gridPos": { "h": 7, "w": 5, "x": 15, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT EXTRACT(DAY FROM NOW() - last_maintenance)::int AS \"Dias\" FROM equipment WHERE id = '$equipment'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 30 },
+              { "color": "red", "value": 60 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Vibração (mm/s) — $equipment",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 7 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT read_at AS time, value AS \"Vibração\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'vibration' ORDER BY read_at",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "mm/s",
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 8.0 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Temperatura (°C) — $equipment",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 7 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT read_at AS time, value AS \"Temperatura\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'temperature' ORDER BY read_at",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 75 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Corrente do Spindle (A) — $equipment",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT read_at AS time, value AS \"Corrente\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'spindle_current' ORDER BY read_at",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "amp",
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 15 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Pressão de Óleo (bar) — $equipment",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT read_at AS time, value AS \"Pressão\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'oil_pressure' ORDER BY read_at",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pressurembar",
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "transparent", "value": 4.0 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Todos os Equipamentos",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 20, "x": 0, "y": 23 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT id AS \"ID\", name AS \"Equipamento\", type AS \"Tipo\", health_score AS \"Health\", oee_pct AS \"OEE %\", status AS \"Status\", last_maintenance AS \"Última Manutenção\" FROM equipment ORDER BY health_score ASC",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

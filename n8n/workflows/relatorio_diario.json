@@ -1,0 +1,103 @@
+{
+  "name": "NEXUS — Relatório Diário (8h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Todo dia às 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/report/daily",
+        "options": { "timeout": 120000 }
+      },
+      "id": "generate-report",
+      "name": "Gerar Relatório Diário",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/monitor/sensors",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-sensors",
+      "name": "Check Sensores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/monitor/inventory",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-inventory",
+      "name": "Check Estoque",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 700]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Consolidar Dados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/monitor/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow_name", "value": "Relatório Diário" },
+            { "name": "trigger_type", "value": "cron" },
+            { "name": "status", "value": "success" },
+            { "name": "summary", "value": "=Relatório diário gerado. Sensores: {{ $node['Check Sensores'].json.alert_count || 0 }} alertas. Estoque: {{ $node['Check Estoque'].json.critical_count || 0 }} críticos." }
+          ]
+        }
+      },
+      "id": "log-report",
+      "name": "Registrar Relatório",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "Todo dia às 8h": {
+      "main": [
+        [
+          { "node": "Gerar Relatório Diário", "type": "main", "index": 0 },
+          { "node": "Check Sensores", "type": "main", "index": 0 },
+          { "node": "Check Estoque", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Gerar Relatório Diário": {
+      "main": [[{ "node": "Consolidar Dados", "type": "main", "index": 0 }]]
+    },
+    "Check Sensores": {
+      "main": [[{ "node": "Consolidar Dados", "type": "main", "index": 1 }]]
+    },
+    "Consolidar Dados": {
+      "main": [[{ "node": "Registrar Relatório", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

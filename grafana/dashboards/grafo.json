@@ -1,0 +1,98 @@
+{
+  "uid": "nexus-grafo",
+  "title": "NEXUS 4.0 — Grafo de Conhecimento",
+  "tags": ["nexus", "grafo", "graphrag", "neo4j"],
+  "timezone": "browser",
+  "refresh": "",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Visão Geral do Grafo",
+      "type": "text",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Grafo de Conhecimento (GraphRAG)\nDados sincronizados do PostgreSQL. Todas as relações entre Produtos, Materiais, Fornecedores, Equipamentos, NCRs e Sensores.\n\n**Neo4j Browser:** [localhost:7474](http://localhost:7474) (neo4j / nexus2024) — Para visualização interativa do grafo completo.\n\nAs tabelas abaixo mostram as relações de forma estruturada."
+      }
+    },
+    {
+      "id": 10,
+      "title": "BOM — Produto × Material (quem usa o quê)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT p.id AS \"Produto ID\", p.name AS \"Produto\", m.id AS \"Material ID\", m.name AS \"Material\", (b.elem->>'qty')::numeric AS \"Qtd\", b.elem->>'unit' AS \"Un.\", m.abc_class AS \"ABC\", CASE WHEN m.stock_current < m.stock_min THEN 'CRITICO' WHEN m.stock_current <= m.reorder_point THEN 'REPOR' ELSE 'OK' END AS \"Status\" FROM products p, jsonb_array_elements(p.bom) AS b(elem) JOIN materials m ON m.id = b.elem->>'material_id' ORDER BY p.id, m.abc_class",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 11,
+      "title": "Fornecedor × Material (quem fornece o quê)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT m.name AS \"Material\", m.abc_class AS \"ABC\", s.name AS \"Fornecedor\", sm.unit_price_brl AS \"Preço (R$)\", sm.lead_time_days AS \"Lead Time\", CASE WHEN sm.is_preferred THEN 'Sim' ELSE '' END AS \"Pref.\", s.rating AS \"Rating\", s.reliability_pct AS \"OTIF %\" FROM supplier_materials sm JOIN suppliers s ON sm.supplier_id = s.id JOIN materials m ON sm.material_id = m.id ORDER BY m.name, sm.is_preferred DESC, s.rating DESC",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 20,
+      "title": "Equipamento × Produto (quem produz o quê)",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT e.id AS \"Equip. ID\", e.name AS \"Equipamento\", e.type AS \"Tipo\", e.health_score AS \"Health\", e.oee_pct AS \"OEE %\", e.status AS \"Status\", string_agg(DISTINCT p.name, ', ') AS \"Produtos\" FROM equipment e LEFT JOIN production_orders po ON po.line_id = CASE WHEN e.id IN ('CNC-03','SERRA-01','RETIFICA-01') THEN 'LINHA-01' WHEN e.id = 'PRENSA-01' THEN 'LINHA-02' END LEFT JOIN products p ON po.product_id = p.id GROUP BY e.id, e.name, e.type, e.health_score, e.oee_pct, e.status ORDER BY e.health_score ASC",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 21,
+      "title": "NCR × Produto (rastreabilidade de defeitos)",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT qr.id AS \"NCR\", p.name AS \"Produto\", qr.type AS \"Tipo Defeito\", qr.severity AS \"Severidade\", qr.root_cause AS \"Causa Raiz\", qr.status AS \"Status\" FROM quality_records qr JOIN products p ON qr.product_id = p.id WHERE qr.status NOT IN ('corrigida', 'fechada') ORDER BY CASE qr.severity WHEN 'critical' THEN 1 WHEN 'major' THEN 2 ELSE 3 END",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 30,
+      "title": "Pedidos de Compra → Fornecedor → Material (cadeia de suprimento ativa)",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 19 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT po.id AS \"PC\", s.name AS \"Fornecedor\", m.name AS \"Material\", po.quantity AS \"Qtd\", po.unit_price_brl AS \"Preço\", po.total_brl AS \"Total (R$)\", po.status AS \"Status\", po.urgency AS \"Urgência\", po.expected_delivery AS \"Entrega\" FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.id JOIN materials m ON po.material_id = m.id WHERE po.status NOT IN ('received', 'rejected') ORDER BY CASE po.urgency WHEN 'emergency' THEN 1 WHEN 'urgent' THEN 2 ELSE 3 END",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 40,
+      "title": "Cadeia Completa: Fornecedor → Material → Produto (mapa de dependências)",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 26 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT s.name AS \"Fornecedor\", s.rating AS \"Rating\", s.location AS \"Local\", m.name AS \"Material\", m.abc_class || '/' || m.xyz_class AS \"ABC/XYZ\", sm.unit_price_brl AS \"Preço\", sm.lead_time_days AS \"Lead Time\", p.name AS \"Produto\", (b.elem->>'qty')::numeric AS \"Qtd/Prod\", CASE WHEN m.stock_current < m.stock_min THEN 'CRITICO' WHEN m.stock_current <= m.reorder_point THEN 'REPOR' ELSE 'OK' END AS \"Estoque\" FROM supplier_materials sm JOIN suppliers s ON sm.supplier_id = s.id JOIN materials m ON sm.material_id = m.id LEFT JOIN products p ON TRUE LEFT JOIN LATERAL jsonb_array_elements(p.bom) AS b(elem) ON b.elem->>'material_id' = m.id WHERE b.elem IS NOT NULL ORDER BY s.name, m.name, p.name",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 50,
+      "title": "Sensores → Equipamentos (última leitura)",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 35 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT DISTINCT ON (sr.equipment_id, sr.sensor_type) e.name AS \"Equipamento\", sr.sensor_type AS \"Sensor\", sr.value AS \"Valor\", sr.unit AS \"Un.\", sr.threshold AS \"Threshold\", ROUND((sr.value / NULLIF(sr.threshold, 0) * 100)::numeric, 1) AS \"% Threshold\", sr.status AS \"Status\", sr.read_at AS \"Última Leitura\" FROM sensor_readings sr JOIN equipment e ON sr.equipment_id = e.id ORDER BY sr.equipment_id, sr.sensor_type, sr.read_at DESC",
+        "format": "table"
+      }]
+    }
+  ],
+  "schemaVersion": 39
+}

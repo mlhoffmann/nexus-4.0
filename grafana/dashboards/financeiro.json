@@ -1,0 +1,133 @@
+{
+  "uid": "nexus-financeiro",
+  "title": "NEXUS 4.0 — Financeiro & Custos",
+  "tags": ["nexus", "financeiro", "custos"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Valor Total em Estoque",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(SUM(stock_current * unit_cost_brl), 2) AS \"Valor (R$)\" FROM materials",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Custo Unitário Médio Produtos",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(unit_cost_brl), 2) AS \"Custo Médio\" FROM products",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "thresholds": {
+            "steps": [{ "color": "green", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Volume em Produção (unidades)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 10, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT SUM(quantity) AS \"Unidades\" FROM production_orders WHERE status IN ('em_andamento', 'planned')",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Receita Potencial (Ordens Ativas)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 15, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(SUM(po.quantity * p.unit_cost_brl * 1.38), 2) AS \"Receita (R$)\" FROM production_orders po JOIN products p ON po.product_id = p.id WHERE po.status IN ('em_andamento', 'planned')",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "thresholds": {
+            "steps": [{ "color": "green", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Custo por Produto",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 10, "x": 0, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT name AS \"Produto\", unit_cost_brl AS \"Custo Unit. (R$)\", cycle_time_min AS \"Tempo Ciclo (min)\" FROM products ORDER BY unit_cost_brl DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Valor de Estoque por Material",
+      "type": "piechart",
+      "gridPos": { "h": 9, "w": 10, "x": 10, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT name AS \"Material\", ROUND(stock_current * unit_cost_brl, 2) AS \"Valor (R$)\" FROM materials ORDER BY stock_current * unit_cost_brl DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Ordens de Produção — Valor Estimado",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 20, "x": 0, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT po.id AS \"OP\", p.name AS \"Produto\", po.quantity AS \"Qtd\", p.unit_cost_brl AS \"Custo/Un\", ROUND(po.quantity * p.unit_cost_brl, 2) AS \"Custo Total (R$)\", ROUND(po.quantity * p.unit_cost_brl * 1.38, 2) AS \"Receita Est. (R$)\", ROUND(po.quantity * p.unit_cost_brl * 0.38, 2) AS \"Margem Est. (R$)\", po.status AS \"Status\" FROM production_orders po JOIN products p ON po.product_id = p.id ORDER BY po.quantity * p.unit_cost_brl DESC",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

@@ -1,0 +1,231 @@
+{
+  "uid": "nexus-automacoes",
+  "title": "NEXUS 4.0 — Automações N8N",
+  "tags": ["nexus", "n8n", "automacoes"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": { "from": "now-48h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Execuções (últimas 48h)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Total\" FROM automation_logs WHERE created_at > NOW() - INTERVAL '48 hours'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Alertas (Warning)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Warnings\" FROM automation_logs WHERE status = 'warning' AND created_at > NOW() - INTERVAL '48 hours'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Críticos",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Críticos\" FROM automation_logs WHERE status = 'critical' AND created_at > NOW() - INTERVAL '48 hours'",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Último Status por Workflow",
+      "type": "table",
+      "gridPos": { "h": 5, "w": 8, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT DISTINCT ON (workflow_name) workflow_name AS \"Workflow\", status AS \"Status\", TO_CHAR(created_at, 'DD/MM HH24:MI') AS \"Última Exec.\" FROM automation_logs ORDER BY workflow_name, created_at DESC",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background", "mode": "basic" }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "success": { "color": "green", "text": "OK" }, "warning": { "color": "orange", "text": "ALERTA" }, "critical": { "color": "red", "text": "CRÍTICO" } } }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "title": "Timeline de Execuções",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 20, "x": 0, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT created_at AS time, CASE WHEN status = 'success' THEN 1 WHEN status = 'warning' THEN 2 WHEN status = 'critical' THEN 3 END AS \"Nível\", workflow_name AS metric FROM automation_logs WHERE created_at > NOW() - INTERVAL '48 hours' ORDER BY created_at",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 10,
+            "showPoints": "always"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": { "text": "OK" },
+                "2": { "text": "Warning" },
+                "3": { "text": "Crítico" }
+              }
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 2 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "min": 0,
+          "max": 4
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Execuções por Workflow (últimas 48h)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT workflow_name AS \"Workflow\", COUNT(*) AS \"Execuções\" FROM automation_logs WHERE created_at > NOW() - INTERVAL '48 hours' GROUP BY workflow_name ORDER BY COUNT(*) DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Distribuição de Status",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 8, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT status AS \"Status\", COUNT(*) AS \"Total\" FROM automation_logs WHERE created_at > NOW() - INTERVAL '48 hours' GROUP BY status",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "success" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "critical" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "title": "Agentes Mais Acionados",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 6, "x": 14, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT agent AS \"Agente\", COUNT(*) AS \"Acionamentos\" FROM automation_logs, UNNEST(agents_involved) AS agent WHERE created_at > NOW() - INTERVAL '48 hours' GROUP BY agent ORDER BY COUNT(*) DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Log Completo de Automações",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 20, "x": 0, "y": 21 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT created_at AS \"Hora\", workflow_name AS \"Workflow\", trigger_type AS \"Trigger\", status AS \"Status\", summary AS \"Resumo\", array_to_string(agents_involved, ', ') AS \"Agentes\", duration_ms AS \"Duração (ms)\" FROM automation_logs ORDER BY created_at DESC LIMIT 50",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "success": { "color": "green" }, "warning": { "color": "orange" }, "critical": { "color": "red" } } }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 39
+}

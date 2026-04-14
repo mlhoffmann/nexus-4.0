@@ -1,0 +1,129 @@
+{
+  "name": "NEXUS — Monitor de Sensores (a cada 5 min)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "A cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/monitor/sensors",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-sensors",
+      "name": "Verificar Sensores",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.alert_count }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "has-alerts",
+      "name": "Tem Alertas?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/agent/maintenance",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "agent",
+              "value": "maintenance"
+            },
+            {
+              "name": "message",
+              "value": "=Alerta automático do monitor de sensores. Equipamentos com problema: {{ JSON.stringify($json.alerts) }}. Analise os dados e recomende ações imediatas."
+            }
+          ]
+        },
+        "options": { "timeout": 60000 }
+      },
+      "id": "call-maintenance",
+      "name": "Acionar Agente Manutenção",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/monitor/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow_name", "value": "Monitor de Sensores" },
+            { "name": "trigger_type", "value": "cron" },
+            { "name": "status", "value": "={{ $node['Verificar Sensores'].json.status }}" },
+            { "name": "summary", "value": "={{ $node['Acionar Agente Manutenção'].json.response || $node['Verificar Sensores'].json.summary }}" }
+          ]
+        }
+      },
+      "id": "log-alert",
+      "name": "Registrar Alerta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/monitor/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow_name", "value": "Monitor de Sensores" },
+            { "name": "trigger_type", "value": "cron" },
+            { "name": "status", "value": "success" },
+            { "name": "summary", "value": "={{ $node['Verificar Sensores'].json.summary }}" }
+          ]
+        }
+      },
+      "id": "log-ok",
+      "name": "Registrar OK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400]
+    }
+  ],
+  "connections": {
+    "A cada 5 minutos": {
+      "main": [[{ "node": "Verificar Sensores", "type": "main", "index": 0 }]]
+    },
+    "Verificar Sensores": {
+      "main": [[{ "node": "Tem Alertas?", "type": "main", "index": 0 }]]
+    },
+    "Tem Alertas?": {
+      "main": [
+        [{ "node": "Acionar Agente Manutenção", "type": "main", "index": 0 }],
+        [{ "node": "Registrar OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Acionar Agente Manutenção": {
+      "main": [[{ "node": "Registrar Alerta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

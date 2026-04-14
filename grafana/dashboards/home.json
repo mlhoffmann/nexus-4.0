@@ -1,0 +1,121 @@
+{
+  "uid": "nexus-home",
+  "title": "NEXUS 4.0 — Home",
+  "tags": ["nexus"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 100,
+      "title": "",
+      "type": "text",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "# 🏭 NEXUS 4.0 — Sistema Multi-Agente para Gestão de Operações Industriais\n**PPGEPS/Unisinos** — Sistemas Avançados em Engenharia de Produção e IA\n\n6 Agentes de IA | RAG | WhatsApp | N8N | Docker"
+      }
+    },
+    {
+      "id": 1,
+      "title": "OEE Geral",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT AVG(oee_pct) AS \"OEE\" FROM equipment WHERE status != 'offline'", "format": "table" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "orange", "value": 65 }, { "color": "green", "value": 85 }] } } }
+    },
+    {
+      "id": 2,
+      "title": "Equipamentos OK",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) || '/' || (SELECT COUNT(*) FROM equipment) AS \"Equip.\" FROM equipment WHERE health_score >= 75", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }] } } }
+    },
+    {
+      "id": 3,
+      "title": "Materiais Críticos",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Críticos\" FROM materials WHERE stock_current < stock_min", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } } }
+    },
+    {
+      "id": 4,
+      "title": "NCRs Abertas",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"NCRs\" FROM quality_records WHERE status NOT IN ('corrigida', 'fechada')", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 3 }, { "color": "red", "value": 5 }] } } }
+    },
+    {
+      "id": 5,
+      "title": "Automações 24h",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Exec.\" FROM automation_logs WHERE created_at > NOW() - INTERVAL '24 hours'", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+    },
+    {
+      "id": 6,
+      "title": "Alertas N8N 24h",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Alertas\" FROM automation_logs WHERE status IN ('warning', 'critical') AND created_at > NOW() - INTERVAL '24 hours'", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 3 }, { "color": "red", "value": 5 }] } } }
+    },
+    {
+      "id": 200,
+      "title": "📊 Dashboards",
+      "type": "text",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
+      "options": {
+        "mode": "markdown",
+        "content": "### Navegação Rápida\n\n| Dashboard | Descrição |\n|-----------|----------|\n| [📈 Visão Geral](/d/nexus-visao-geral) | OEE, ordens de produção, health scores, decisões dos agentes |\n| [🔧 Manutenção Preditiva](/d/nexus-manutencao) | Sensores IoT em tempo real, vibração, temperatura, previsão de falha |\n| [📦 Supply Chain & Estoque](/d/nexus-supply-chain) | Níveis de estoque, fornecedores, materiais críticos |\n| [📋 Gestão de Materiais](/d/nexus-materiais) | Classificação ABC/XYZ, cobertura, movimentações, pedidos de compra |\n| [🔍 Qualidade](/d/nexus-qualidade) | NCRs, defeitos por tipo/severidade, timeline |\n| [💰 Financeiro & Custos](/d/nexus-financeiro) | Valor em estoque, custos por produto, receita potencial |\n| [⚡ Automações N8N](/d/nexus-automacoes) | Execuções automáticas, alertas, agentes acionados |\n| [🔗 Grafo de Conhecimento](/d/nexus-grafo) | Relações: BOM, fornecedores, cadeia completa, rastreabilidade |\n\n### Interfaces Externas\n\n| Serviço | URL |\n|---------|-----|\n| 💬 Chat com Agentes | [localhost:8501](http://localhost:8501) |\n| 🔄 N8N Workflows | [localhost:5678](http://localhost:5678) |\n| 🔗 Neo4j Browser | [localhost:7474](http://localhost:7474) |\n| 🔌 API NEXUS | [localhost:8080](http://localhost:8080) |"
+      }
+    },
+    {
+      "id": 201,
+      "title": "🤖 Arquitetura Multi-Agente",
+      "type": "text",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
+      "options": {
+        "mode": "markdown",
+        "content": "```\n┌──────────────────────────────────────┐\n│          👨‍💼 GESTOR                   │\n│    WhatsApp │ Chat UI │ Grafana      │\n└──────────┬───────────────────────────┘\n           │\n┌──────────▼───────────────────────────┐\n│       🧠 COORDINATOR                 │\n│  Segurança > Qualidade > Prazo > $   │\n└──┬─────┬─────┬─────┬─────┬──────────┘\n   │     │     │     │     │\n ┌─▼─┐ ┌─▼─┐ ┌─▼─┐ ┌─▼─┐ ┌─▼──┐\n │PCP│ │Qua│ │ SC│ │Mnt│ │Anl │\n └─┬─┘ └─┬─┘ └─┬─┘ └─┬─┘ └─┬──┘\n   │     │     │     │     │\n ┌─▼─────▼─────▼─────▼─────▼──┐\n │  PostgreSQL │ ChromaDB(RAG) │\n └────────────────────────────┘\n\n⚡ N8N Automações:\n• Monitor Sensores — a cada 5 min\n• Alerta Estoque — a cada 1h\n• Relatório Diário — às 8h\n```"
+      }
+    },
+    {
+      "id": 300,
+      "title": "Últimas Automações",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT created_at AS \"Hora\", workflow_name AS \"Workflow\", status AS \"Status\", summary AS \"Resumo\", array_to_string(agents_involved, ', ') AS \"Agentes\" FROM automation_logs ORDER BY created_at DESC LIMIT 8",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 301,
+      "title": "Últimas Decisões dos Agentes",
+      "type": "table",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 27 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT created_at AS \"Hora\", agent_role AS \"Agente\", decision AS \"Decisão\", confidence AS \"Confiança\" FROM agent_decisions ORDER BY created_at DESC LIMIT 8",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

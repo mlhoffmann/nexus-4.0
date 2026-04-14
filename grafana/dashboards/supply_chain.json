@@ -1,0 +1,155 @@
+{
+  "uid": "nexus-supply-chain",
+  "title": "NEXUS 4.0 — Supply Chain & Estoque",
+  "tags": ["nexus", "supply_chain", "estoque"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Materiais em Estoque Crítico",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Críticos\" FROM materials WHERE stock_current < stock_min",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Total de Materiais",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Materiais\" FROM materials",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Fornecedores Ativos",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 10, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Fornecedores\" FROM suppliers",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [{ "color": "blue", "value": 0 }]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Rating Médio Fornecedores",
+      "type": "gauge",
+      "gridPos": { "h": 5, "w": 5, "x": 15, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT AVG(rating) AS \"Rating\" FROM suppliers",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 5,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 3 },
+              { "color": "green", "value": 4 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Níveis de Estoque vs. Mínimo",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT name AS \"Material\", stock_current AS \"Estoque Atual\", stock_min AS \"Estoque Mínimo\", stock_safety AS \"Estoque Segurança\" FROM materials ORDER BY name",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Estoque Mínimo" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estoque Segurança" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estoque Atual" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }]
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "title": "Fornecedores — Performance",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 8, "x": 12, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT name AS \"Fornecedor\", rating AS \"Rating\", lead_time_days AS \"Lead Time (dias)\", reliability_pct AS \"Confiabilidade %\", location AS \"Local\" FROM suppliers ORDER BY rating DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Detalhamento de Materiais",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 20, "x": 0, "y": 15 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT id AS \"ID\", name AS \"Material\", unit AS \"Un\", stock_current AS \"Estoque\", stock_min AS \"Mínimo\", stock_safety AS \"Segurança\", unit_cost_brl AS \"Custo Unit. (R$)\", CASE WHEN stock_current < stock_min THEN 'CRÍTICO' WHEN stock_current < stock_safety THEN 'ATENÇÃO' ELSE 'OK' END AS \"Status\", ROUND(stock_current * unit_cost_brl, 2) AS \"Valor Estoque (R$)\" FROM materials ORDER BY stock_current - stock_min ASC",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

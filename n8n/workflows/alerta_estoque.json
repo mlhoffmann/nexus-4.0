@@ -1,0 +1,126 @@
+{
+  "name": "NEXUS — Alerta de Estoque (a cada 1h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "A cada 1 hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/monitor/inventory",
+        "options": { "timeout": 30000 }
+      },
+      "id": "check-inventory",
+      "name": "Verificar Estoque",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.critical_count }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        }
+      },
+      "id": "has-critical",
+      "name": "Estoque Crítico?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "=ALERTA AUTOMÁTICO DE ESTOQUE: {{ $json.summary }}. Materiais críticos: {{ JSON.stringify($json.critical) }}. Analise e recomende ações de compra emergencial."
+            },
+            { "name": "user_id", "value": "n8n_automation" }
+          ]
+        },
+        "options": { "timeout": 120000 }
+      },
+      "id": "call-coordinator",
+      "name": "Acionar Coordinator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/monitor/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow_name", "value": "Alerta de Estoque" },
+            { "name": "trigger_type", "value": "cron" },
+            { "name": "status", "value": "critical" },
+            { "name": "summary", "value": "={{ $node['Acionar Coordinator'].json.response || $node['Verificar Estoque'].json.summary }}" }
+          ]
+        }
+      },
+      "id": "log-critical",
+      "name": "Registrar Crítico",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nexus-api:8080/monitor/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow_name", "value": "Alerta de Estoque" },
+            { "name": "trigger_type", "value": "cron" },
+            { "name": "status", "value": "success" },
+            { "name": "summary", "value": "={{ $node['Verificar Estoque'].json.summary }}" }
+          ]
+        }
+      },
+      "id": "log-ok",
+      "name": "Registrar OK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400]
+    }
+  ],
+  "connections": {
+    "A cada 1 hora": {
+      "main": [[{ "node": "Verificar Estoque", "type": "main", "index": 0 }]]
+    },
+    "Verificar Estoque": {
+      "main": [[{ "node": "Estoque Crítico?", "type": "main", "index": 0 }]]
+    },
+    "Estoque Crítico?": {
+      "main": [
+        [{ "node": "Acionar Coordinator", "type": "main", "index": 0 }],
+        [{ "node": "Registrar OK", "type": "main", "index": 0 }]
+      ]
+    },
+    "Acionar Coordinator": {
+      "main": [[{ "node": "Registrar Crítico", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

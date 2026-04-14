@@ -1,0 +1,133 @@
+{
+  "name": "NEXUS 4.0 - Orquestração de Agentes",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nexus-trigger",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.body.message }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.body.user_id || 'n8n' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "nexus-chat",
+      "name": "NEXUS Chat API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.response }}",
+              "operation": "contains",
+              "value2": "❌"
+            }
+          ]
+        }
+      },
+      "id": "check-critical",
+      "name": "Check Critical Alert",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://nexus-api:8080/agent/analyst",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "agent",
+              "value": "analyst"
+            },
+            {
+              "name": "message",
+              "value": "Gere um relatório de impacto detalhado para: {{ $node['NEXUS Chat API'].json.response }}"
+            }
+          ]
+        }
+      },
+      "id": "analyst-deep-dive",
+      "name": "Analyst Deep Dive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'processed', response: $json.response, conversation_id: $json.conversation_id }) }}"
+      },
+      "id": "respond-normal",
+      "name": "Respond Normal",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'critical', response: $json.response, analyst_report: $node['Analyst Deep Dive'].json.response }) }}"
+      },
+      "id": "respond-critical",
+      "name": "Respond Critical",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "NEXUS Chat API", "type": "main", "index": 0 }]
+      ]
+    },
+    "NEXUS Chat API": {
+      "main": [
+        [{ "node": "Check Critical Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Critical Alert": {
+      "main": [
+        [{ "node": "Analyst Deep Dive", "type": "main", "index": 0 }],
+        [{ "node": "Respond Normal", "type": "main", "index": 0 }]
+      ]
+    },
+    "Analyst Deep Dive": {
+      "main": [
+        [{ "node": "Respond Critical", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

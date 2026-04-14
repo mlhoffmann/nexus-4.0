@@ -1,0 +1,148 @@
+{
+  "uid": "nexus-materiais",
+  "title": "NEXUS 4.0 — Gestão de Materiais",
+  "tags": ["nexus", "materiais", "estoque", "abc"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Valor Total em Estoque",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT ROUND(SUM(stock_current * unit_cost_brl), 2) AS \"Valor (R$)\" FROM materials", "format": "table" }],
+      "fieldConfig": { "defaults": { "unit": "currencyBRL", "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+    },
+    {
+      "id": 2,
+      "title": "Total de Materiais",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 4, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Itens\" FROM materials", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+    },
+    {
+      "id": 3,
+      "title": "Abaixo Ponto Reposição",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 7, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Reposição\" FROM materials WHERE stock_current <= reorder_point", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 }] } } }
+    },
+    {
+      "id": 4,
+      "title": "Abaixo Estoque Mínimo",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 11, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Críticos\" FROM materials WHERE stock_current < stock_min", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": 0 }, { "color": "red", "value": 1 }] } } }
+    },
+    {
+      "id": 5,
+      "title": "Pedidos de Compra Ativos",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 15, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"PCs\" FROM purchase_orders WHERE status NOT IN ('received', 'rejected')", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+    },
+    {
+      "id": 6,
+      "title": "Fornecedores Ativos",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 19, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT COUNT(*) AS \"Fornec.\" FROM suppliers WHERE status = 'active'", "format": "table" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } }
+    },
+    {
+      "id": 10,
+      "title": "Classificação ABC — Valor em Estoque por Classe",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{ "rawSql": "SELECT 'Classe ' || abc_class AS \"Classe\", ROUND(SUM(stock_current * unit_cost_brl), 2) AS \"Valor (R$)\" FROM materials GROUP BY abc_class ORDER BY abc_class", "format": "table" }]
+    },
+    {
+      "id": 11,
+      "title": "Estoque vs. Mínimo vs. Ponto Reposição",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 10, "x": 6, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT name AS \"Material\", stock_current AS \"Estoque\", reorder_point AS \"Pto. Reposição\", stock_min AS \"Mínimo\" FROM materials WHERE abc_class IN ('A', 'B') ORDER BY stock_current::float / NULLIF(reorder_point, 0) ASC",
+        "format": "table"
+      }],
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Mínimo" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Pto. Reposição" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Estoque" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "title": "Cobertura em Dias (por material)",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT name AS \"Material\", CASE WHEN avg_daily_consumption > 0 THEN ROUND(stock_current / avg_daily_consumption, 0) ELSE 999 END AS \"Dias\" FROM materials WHERE abc_class IN ('A', 'B') ORDER BY stock_current::float / NULLIF(avg_daily_consumption, 0.01) ASC",
+        "format": "table"
+      }],
+      "fieldConfig": { "defaults": { "min": 0, "max": 100, "thresholds": { "steps": [{ "color": "red", "value": 0 }, { "color": "orange", "value": 7 }, { "color": "yellow", "value": 15 }, { "color": "green", "value": 30 }] } } }
+    },
+    {
+      "id": 20,
+      "title": "Movimentações de Estoque (últimos 30 dias)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT date_trunc('day', created_at) AS time, movement_type AS metric, SUM(ABS(quantity)) AS \"Quantidade\" FROM inventory_movements WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY date_trunc('day', created_at), movement_type ORDER BY time",
+        "format": "time_series"
+      }],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 } } }
+    },
+    {
+      "id": 21,
+      "title": "Pedidos de Compra",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT po.id AS \"PC\", s.name AS \"Fornecedor\", m.name AS \"Material\", po.quantity AS \"Qtd\", po.unit_price_brl AS \"Preço Un.\", po.total_brl AS \"Total (R$)\", po.status AS \"Status\", po.urgency AS \"Urgência\", po.expected_delivery AS \"Entrega Prev.\" FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.id JOIN materials m ON po.material_id = m.id ORDER BY po.order_date DESC",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 30,
+      "title": "Inventário Completo",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 21 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT m.id AS \"ID\", m.name AS \"Material\", m.unit AS \"Un.\", m.abc_class || '/' || m.xyz_class AS \"ABC/XYZ\", m.category AS \"Categoria\", m.stock_current AS \"Estoque\", m.reorder_point AS \"Pto. Repos.\", m.stock_min AS \"Mínimo\", m.stock_safety AS \"Segurança\", m.eoq AS \"EOQ\", m.unit_cost_brl AS \"Custo (R$)\", ROUND(m.stock_current * m.unit_cost_brl, 2) AS \"Valor (R$)\", CASE WHEN m.avg_daily_consumption > 0 THEN ROUND(m.stock_current / m.avg_daily_consumption, 0) ELSE NULL END AS \"Dias Cobert.\", m.location_warehouse AS \"Local\", CASE WHEN m.stock_current < m.stock_min THEN 'CRÍTICO' WHEN m.stock_current <= m.reorder_point THEN 'REPOR' ELSE 'OK' END AS \"Status\" FROM materials m ORDER BY m.abc_class, m.name",
+        "format": "table"
+      }]
+    },
+    {
+      "id": 40,
+      "title": "Fornecedores — Performance",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 31 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [{
+        "rawSql": "SELECT s.id AS \"ID\", s.name AS \"Fornecedor\", s.rating AS \"Rating\", s.lead_time_days AS \"Lead Time\", s.reliability_pct AS \"OTIF %\", s.quality_pct AS \"Qualidade %\", s.price_competitiveness AS \"Competitividade\", s.payment_terms AS \"Pgto\", CASE WHEN s.certified_iso THEN 'Sim' ELSE 'Não' END AS \"ISO\", s.status AS \"Status\", (SELECT COUNT(*) FROM supplier_materials sm WHERE sm.supplier_id = s.id) AS \"Materiais\" FROM suppliers s ORDER BY s.rating DESC",
+        "format": "table"
+      }]
+    }
+  ],
+  "schemaVersion": 39
+}

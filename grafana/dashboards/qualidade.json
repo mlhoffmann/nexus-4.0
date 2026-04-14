@@ -1,0 +1,120 @@
+{
+  "uid": "nexus-qualidade",
+  "title": "NEXUS 4.0 — Qualidade",
+  "tags": ["nexus", "qualidade", "cep"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total NCRs Abertas",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"NCRs Abertas\" FROM quality_records WHERE status NOT IN ('corrigida', 'fechada')",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "NCRs Críticas",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS \"Críticas\" FROM quality_records WHERE severity = 'critical' AND status NOT IN ('corrigida', 'fechada')",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Defeitos por Tipo",
+      "type": "piechart",
+      "gridPos": { "h": 9, "w": 10, "x": 10, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT type AS \"Tipo\", COUNT(*) AS \"Total\" FROM quality_records GROUP BY type ORDER BY COUNT(*) DESC",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Defeitos por Severidade",
+      "type": "piechart",
+      "gridPos": { "h": 4, "w": 10, "x": 0, "y": 5 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT severity AS \"Severidade\", COUNT(*) AS \"Total\" FROM quality_records GROUP BY severity",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "NCRs ao Longo do Tempo",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 20, "x": 0, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, COUNT(*) AS \"NCRs\" FROM quality_records GROUP BY date_trunc('day', created_at) ORDER BY time",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "Registro de Não-Conformidades",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 20, "x": 0, "y": 17 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT qr.id AS \"NCR\", p.name AS \"Produto\", qr.type AS \"Tipo\", qr.severity AS \"Severidade\", qr.root_cause AS \"Causa Raiz\", qr.status AS \"Status\", qr.created_at AS \"Data\" FROM quality_records qr JOIN products p ON qr.product_id = p.id ORDER BY qr.created_at DESC",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}
