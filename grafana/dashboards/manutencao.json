@@ -4,7 +4,7 @@
   "tags": ["nexus", "manutencao", "sensores", "iot"],
   "timezone": "browser",
   "refresh": "5s",
-  "time": { "from": "now-6h", "to": "now" },
+  "time": { "from": "now-48h", "to": "now" },
   "templating": {
     "list": [
       {
@@ -14,6 +14,16 @@
         "query": "SELECT id FROM equipment ORDER BY id",
         "current": { "text": "CNC-03", "value": "CNC-03" },
         "refresh": 1
+      },
+      {
+        "name": "sensor",
+        "type": "query",
+        "datasource": { "type": "postgres", "uid": "" },
+        "query": "SELECT DISTINCT sensor_type FROM sensor_readings WHERE equipment_id = '$equipment' ORDER BY sensor_type",
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": { "text": "", "value": "" }
       }
     ]
   },
@@ -133,123 +143,38 @@
     },
     {
       "id": 10,
-      "title": "Vibração (mm/s) — $equipment",
+      "title": "$sensor — $equipment",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 7 },
+      "gridPos": { "h": 10, "w": 20, "x": 0, "y": 7 },
       "datasource": { "type": "postgres", "uid": "" },
       "targets": [
         {
-          "rawSql": "SELECT read_at AS time, value AS \"Vibração\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'vibration' ORDER BY read_at",
+          "rawSql": "SELECT read_at AS time, value AS sensor_value FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = '$sensor' AND read_at > NOW() - INTERVAL '48 hours' ORDER BY read_at",
           "format": "time_series"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "mm/s",
-          "color": { "mode": "fixed", "fixedColor": "orange" },
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 15,
-            "thresholdsStyle": { "mode": "line+area" }
-          },
-          "thresholds": {
-            "steps": [
-              { "color": "transparent", "value": null },
-              { "color": "red", "value": 8.0 }
-            ]
+            "fillOpacity": 15
           }
         }
       }
     },
     {
       "id": 11,
-      "title": "Temperatura (°C) — $equipment",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 7 },
+      "title": "Últimas Leituras — $equipment",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 20, "x": 0, "y": 17 },
       "datasource": { "type": "postgres", "uid": "" },
       "targets": [
         {
-          "rawSql": "SELECT read_at AS time, value AS \"Temperatura\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'temperature' ORDER BY read_at",
-          "format": "time_series"
+          "rawSql": "SELECT DISTINCT ON (sensor_type) sensor_type AS \"Sensor\", value AS \"Valor\", unit AS \"Unidade\", threshold AS \"Threshold\", ROUND((value / NULLIF(threshold, 0) * 100)::numeric, 1) AS \"% Threshold\", status AS \"Status\", read_at AS \"Última Leitura\" FROM sensor_readings WHERE equipment_id = '$equipment' ORDER BY sensor_type, read_at DESC",
+          "format": "table"
         }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "color": { "mode": "fixed", "fixedColor": "red" },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 15,
-            "thresholdsStyle": { "mode": "line+area" }
-          },
-          "thresholds": {
-            "steps": [
-              { "color": "transparent", "value": null },
-              { "color": "red", "value": 75 }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": 12,
-      "title": "Corrente do Spindle (A) — $equipment",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 15 },
-      "datasource": { "type": "postgres", "uid": "" },
-      "targets": [
-        {
-          "rawSql": "SELECT read_at AS time, value AS \"Corrente\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'spindle_current' ORDER BY read_at",
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "amp",
-          "color": { "mode": "fixed", "fixedColor": "blue" },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "thresholdsStyle": { "mode": "line+area" }
-          },
-          "thresholds": {
-            "steps": [
-              { "color": "transparent", "value": null },
-              { "color": "red", "value": 15 }
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": 13,
-      "title": "Pressão de Óleo (bar) — $equipment",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 15 },
-      "datasource": { "type": "postgres", "uid": "" },
-      "targets": [
-        {
-          "rawSql": "SELECT read_at AS time, value AS \"Pressão\" FROM sensor_readings WHERE equipment_id = '$equipment' AND sensor_type = 'oil_pressure' ORDER BY read_at",
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "pressurembar",
-          "color": { "mode": "fixed", "fixedColor": "purple" },
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "thresholdsStyle": { "mode": "line+area" }
-          },
-          "thresholds": {
-            "steps": [
-              { "color": "red", "value": 0 },
-              { "color": "transparent", "value": 4.0 }
-            ]
-          }
-        }
-      }
+      "fieldConfig": { "defaults": {} }
     },
     {
       "id": 20,

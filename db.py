@@ -282,6 +282,25 @@ def get_capacity_report(days: int = 5) -> list[dict]:
     """, (days, days, days, days))
 
 
+def get_maintenance_history(equipment_id: str | None = None, limit: int = 10) -> list[dict]:
+    """Retorna histórico de manutenções realizadas."""
+    sql = """
+        SELECT mh.id, mh.equipment_id, e.name AS equipment_name,
+               mh.maintenance_type, mh.scheduled_date, mh.start_date, mh.end_date,
+               mh.duration_hours, mh.description, mh.actions_performed,
+               mh.parts_replaced, mh.labor_hours, mh.cost_brl,
+               mh.technician, mh.status, mh.notes
+        FROM maintenance_history mh
+        JOIN equipment e ON mh.equipment_id = e.id
+    """
+    params: list[Any] = []
+    if equipment_id:
+        sql += " WHERE mh.equipment_id = %s"
+        params.append(equipment_id)
+    sql += f" ORDER BY mh.end_date DESC LIMIT {limit}"
+    return query(sql, tuple(params) if params else None)
+
+
 def get_latest_sensor_readings(equipment_id: str) -> list[dict]:
     """Retorna última leitura de cada sensor de um equipamento."""
     return query("""

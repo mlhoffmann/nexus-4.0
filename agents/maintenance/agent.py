@@ -87,6 +87,20 @@ Responda em português brasileiro."""
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_maintenance_history",
+                    "description": "Histórico de manutenções realizadas em um equipamento. Retorna tipo, data, duração, ações realizadas, peças trocadas, custo e técnico. Dados reais do PostgreSQL.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "equipment_id": {"type": "string", "description": "ID do equipamento. Se vazio, retorna todas as manutenções."},
+                            "limit": {"type": "integer", "description": "Número máximo de registros (padrão 10)"},
+                        },
+                    },
+                },
+            },
         ]
 
     async def execute_tool(self, tool_name: str, arguments: dict) -> Any:
@@ -106,6 +120,17 @@ Responda em português brasileiro."""
                 return json.loads(json.dumps({
                     "equipment_id": arguments["equipment_id"],
                     "sensors": readings,
+                }, default=_serialize))
+
+            elif tool_name == "get_maintenance_history":
+                history = db.get_maintenance_history(
+                    equipment_id=arguments.get("equipment_id"),
+                    limit=arguments.get("limit", 10),
+                )
+                return json.loads(json.dumps({
+                    "equipment_id": arguments.get("equipment_id"),
+                    "history": history,
+                    "total": len(history),
                 }, default=_serialize))
 
             return {"error": f"Tool '{tool_name}' desconhecida"}

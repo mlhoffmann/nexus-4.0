@@ -70,20 +70,33 @@
     },
     {
       "id": 11,
-      "title": "Estoque vs. Mínimo vs. Ponto Reposição",
-      "type": "barchart",
+      "title": "Nível de Estoque (% do Ponto de Reposição)",
+      "type": "bargauge",
       "gridPos": { "h": 8, "w": 10, "x": 6, "y": 5 },
       "datasource": { "type": "postgres", "uid": "" },
       "targets": [{
-        "rawSql": "SELECT name AS \"Material\", stock_current AS \"Estoque\", reorder_point AS \"Pto. Reposição\", stock_min AS \"Mínimo\" FROM materials WHERE abc_class IN ('A', 'B') ORDER BY stock_current::float / NULLIF(reorder_point, 0) ASC",
+        "rawSql": "SELECT CONCAT(name, ' (', id, ')') AS \"Material\", ROUND((stock_current / NULLIF(reorder_point, 1) * 100)::numeric, 0) AS \"Nível %\" FROM materials WHERE reorder_point > 0 ORDER BY stock_current::float / reorder_point ASC",
         "format": "table"
       }],
       "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "Mínimo" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "Pto. Reposição" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "Estoque" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
-        ]
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 300,
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 50 },
+              { "color": "yellow", "value": 100 },
+              { "color": "green", "value": 150 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
       }
     },
     {

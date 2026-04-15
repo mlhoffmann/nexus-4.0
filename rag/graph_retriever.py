@@ -54,7 +54,7 @@ class GraphRAGRetriever:
         entities = []
 
         # Produtos
-        for pid in ["PROD-001", "PROD-002", "PROD-003"]:
+        for pid in ["PROD-001", "PROD-002", "PROD-003", "PROD-004", "PROD-005", "PROD-006", "PROD-007", "PROD-008"]:
             if pid in query_upper:
                 entities.append(pid)
         if "EIXO" in query_upper or "ET-500" in query_upper or "TRANSMISS" in query_upper:
@@ -63,6 +63,16 @@ class GraphRAGRetriever:
             entities.append("PROD-002")
         if "BUCHA" in query_upper or "BM-100" in query_upper or "MANCAL" in query_upper:
             entities.append("PROD-003")
+        if "FLANGE" in query_upper or "FA-300" in query_upper or "ACOPLAMENTO" in query_upper:
+            entities.append("PROD-004")
+        if "PINO" in query_upper or "PG-150" in query_upper or "GUIA" in query_upper:
+            entities.append("PROD-005")
+        if "CAME" in query_upper or "CC-250" in query_upper or "COMANDO" in query_upper:
+            entities.append("PROD-006")
+        if "LUVA" in query_upper or "LE-180" in query_upper or "ESTRIADA" in query_upper:
+            entities.append("PROD-007")
+        if "POLIA" in query_upper or "PS-120" in query_upper or "SINCRONIZADORA" in query_upper:
+            entities.append("PROD-008")
 
         # Equipamentos
         for eid in ["CNC-03", "PRENSA-01", "RETIFICA-01", "SERRA-01"]:

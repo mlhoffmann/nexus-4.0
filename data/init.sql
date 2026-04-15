@@ -164,6 +164,24 @@ CREATE TABLE equipment (
     last_maintenance TIMESTAMP
 );
 
+CREATE TABLE maintenance_history (
+    id VARCHAR(20) PRIMARY KEY,
+    equipment_id VARCHAR(20) REFERENCES equipment(id),
+    maintenance_type VARCHAR(30) NOT NULL,  -- preventiva, corretiva, preditiva, calibração
+    scheduled_date TIMESTAMP,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    duration_hours DECIMAL(5,2),
+    description TEXT NOT NULL,              -- O que foi feito
+    actions_performed TEXT[],               -- Ações específicas realizadas
+    parts_replaced TEXT[],                  -- Peças trocadas
+    labor_hours DECIMAL(5,2),
+    cost_brl DECIMAL(10,2),
+    technician VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'concluida', -- agendada, em_andamento, concluida, cancelada
+    notes TEXT
+);
+
 CREATE TABLE production_orders (
     id VARCHAR(20) PRIMARY KEY,
     product_id VARCHAR(20) REFERENCES products(id),
@@ -214,9 +232,45 @@ CREATE TABLE automation_logs (
 -- ============================================
 
 INSERT INTO products VALUES
-('PROD-001', 'Eixo de Transmissão ET-500', 'Eixo de transmissão em aço SAE 1045 temperado e retificado para aplicações automotivas. Tolerância ±0.02mm, rugosidade Ra 0.8, dureza 58-62 HRC.', 185.00, 42.0, '[{"material_id": "MP-001", "qty": 2.5, "unit": "kg"}, {"material_id": "MP-002", "qty": 1, "unit": "pç"}, {"material_id": "MP-009", "qty": 4, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
-('PROD-002', 'Engrenagem Helicoidal EH-200', 'Engrenagem helicoidal módulo 2, 40 dentes, em aço SAE 4340 com tratamento térmico de cementação. Aplicação em redutores industriais.', 320.00, 55.0, '[{"material_id": "MP-001", "qty": 5.0, "unit": "kg"}, {"material_id": "MP-009", "qty": 6, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
-('PROD-003', 'Bucha de Mancal BM-100', 'Bucha autolubrificante para mancal de deslizamento, em bronze SAE 65. Aplicação em equipamentos rotativos de baixa velocidade.', 95.00, 25.0, '[{"material_id": "MP-001", "qty": 1.2, "unit": "kg"}, {"material_id": "MP-011", "qty": 0.1, "unit": "kg"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]');
+('PROD-001', 'Eixo de Transmissão ET-500',
+ 'Eixo de transmissão em aço SAE 1045 temperado e retificado para aplicações automotivas. Tolerância ±0.02mm, rugosidade Ra 0.8, dureza 58-62 HRC. Processo: Corte → Usinagem CNC → Têmpera/Revenimento → Retífica → Montagem sensor → Inspeção → Embalagem.',
+ 185.00, 42.0,
+ '[{"material_id": "MP-001", "qty": 2.5, "unit": "kg"}, {"material_id": "MP-002", "qty": 1, "unit": "pç"}, {"material_id": "MP-009", "qty": 4, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-002', 'Engrenagem Helicoidal EH-200',
+ 'Engrenagem helicoidal módulo 2, 40 dentes, em aço SAE 4340 com tratamento térmico de cementação. Aplicação em redutores industriais. Processo: Corte → Usinagem CNC (desbaste + acabamento) → Cementação → Retífica de dentes.',
+ 320.00, 55.0,
+ '[{"material_id": "MP-001", "qty": 5.0, "unit": "kg"}, {"material_id": "MP-009", "qty": 6, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-003', 'Bucha de Mancal BM-100',
+ 'Bucha autolubrificante para mancal de deslizamento, em bronze SAE 65. Aplicação em equipamentos rotativos de baixa velocidade. Processo: Corte → Usinagem CNC → Aplicação graxa → Embalagem.',
+ 95.00, 25.0,
+ '[{"material_id": "MP-001", "qty": 1.2, "unit": "kg"}, {"material_id": "MP-011", "qty": 0.1, "unit": "kg"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-004', 'Flange de Acoplamento FA-300',
+ 'Flange de acoplamento em aço SAE 1045 para conexão de eixos em sistemas de transmissão automotiva. 6 furos M10 em padrão circular. Tolerância ±0.05mm. Processo: Corte → Usinagem CNC → Furação → Inspeção → Embalagem.',
+ 145.00, 35.0,
+ '[{"material_id": "MP-001", "qty": 3.0, "unit": "kg"}, {"material_id": "MP-009", "qty": 6, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-005', 'Pino Guia PG-150',
+ 'Pino guia de precisão em aço SAE 4140 temperado e retificado. Tolerância h6, rugosidade Ra 0.4. Aplicação em matrizes e dispositivos de fixação. Processo: Corte → Usinagem CNC → Têmpera → Retífica centerless.',
+ 65.00, 18.0,
+ '[{"material_id": "MP-001", "qty": 0.8, "unit": "kg"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-006', 'Came de Comando CC-250',
+ 'Came de comando em aço SAE 8620 cementado para sistemas de distribuição automotiva. Perfil de came usinado em 5 eixos. Dureza superficial 58-62 HRC, núcleo 30-35 HRC. Processo: Corte → Usinagem CNC 5 eixos → Cementação → Retífica de perfil.',
+ 410.00, 68.0,
+ '[{"material_id": "MP-001", "qty": 4.5, "unit": "kg"}, {"material_id": "MP-009", "qty": 2, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-007', 'Luva Estriada LE-180',
+ 'Luva estriada em aço SAE 4340 para acoplamento de eixos com transmissão de torque. 16 estrias involuta, módulo 1.5. Processo: Corte → Usinagem CNC → Brocheamento de estrias → Têmpera por indução.',
+ 275.00, 48.0,
+ '[{"material_id": "MP-001", "qty": 3.5, "unit": "kg"}, {"material_id": "MP-009", "qty": 4, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]'),
+
+('PROD-008', 'Polia Sincronizadora PS-120',
+ 'Polia sincronizadora em alumínio 6061-T6 anodizado para sistemas de transmissão por correia dentada. 28 dentes, perfil HTD-5M. Processo: Corte → Usinagem CNC → Anodização → Inspeção → Embalagem.',
+ 120.00, 30.0,
+ '[{"material_id": "MP-001", "qty": 1.0, "unit": "kg"}, {"material_id": "MP-008", "qty": 1, "unit": "pç"}, {"material_id": "MP-009", "qty": 2, "unit": "pç"}, {"material_id": "MP-003", "qty": 1, "unit": "pç"}]');
 
 -- Materiais expandidos com classificação ABC/XYZ e gestão completa
 INSERT INTO materials (id, name, unit, category, abc_class, xyz_class, stock_current, stock_min, stock_safety, stock_max, reorder_point, eoq, unit_cost_brl, last_unit_cost_brl, avg_daily_consumption, lead_time_days, location_warehouse, ncm_code, last_purchase_date, last_count_date) VALUES
@@ -308,15 +362,106 @@ INSERT INTO material_forecasts (material_id, period_start, period_end, forecast_
 
 -- equipment: id, name, type, line_id, health_score, oee_pct, status, capacity_pcs_hour, shifts_per_day, hours_per_shift, planned_downtime_pct, last_maintenance
 INSERT INTO equipment VALUES
-('CNC-03',      'Centro de Usinagem CNC XR-500', 'usinagem',    'LINHA-01', 62, 72.5, 'atenção',     34, 2, 8.0, 5.0, '2024-06-15 08:00:00'),
-('PRENSA-01',   'Prensa Hidráulica PH-200',      'conformação', 'LINHA-02', 88, 87.3, 'operational', 50, 1, 8.0, 5.0, '2024-07-01 08:00:00'),
-('RETIFICA-01', 'Retífica Cilíndrica RC-100',     'acabamento',  'LINHA-01', 91, 89.0, 'operational', 40, 1, 8.0, 5.0, '2024-06-20 08:00:00'),
-('SERRA-01',    'Serra CNC SC-300',               'corte',       'LINHA-01', 85, 84.5, 'operational', 60, 2, 8.0, 5.0, '2024-07-05 08:00:00');
+('CNC-03',      'Centro de Usinagem CNC XR-500',     'usinagem_3eixos',  'LINHA-01', 62, 72.5, 'atenção',     34, 2, 8.0, 5.0, '2024-06-15 08:00:00'),
+('CNC-05',      'Centro de Usinagem 5 Eixos VX-700', 'usinagem_5eixos',  'LINHA-01', 94, 91.2, 'operational', 20, 2, 8.0, 5.0, '2024-07-10 08:00:00'),
+('SERRA-01',    'Serra CNC SC-300',                   'corte',            'LINHA-01', 85, 84.5, 'operational', 60, 2, 8.0, 5.0, '2024-07-05 08:00:00'),
+('RETIFICA-01', 'Retífica Cilíndrica RC-100',         'acabamento',       'LINHA-01', 91, 89.0, 'operational', 40, 1, 8.0, 5.0, '2024-06-20 08:00:00'),
+('FORNO-01',    'Forno de Tratamento Térmico FT-400', 'tratamento_termico','LINHA-01', 95, 92.0, 'operational', 80, 3, 8.0, 3.0, '2024-07-08 08:00:00'),
+('PRENSA-01',   'Prensa Hidráulica PH-200',           'conformação',      'LINHA-02', 88, 87.3, 'operational', 50, 1, 8.0, 5.0, '2024-07-01 08:00:00'),
+('BROCH-01',    'Brochadeira Vertical BV-200',        'brocheamento',     'LINHA-02', 87, 85.0, 'operational', 25, 1, 8.0, 5.0, '2024-06-28 08:00:00'),
+('ANOD-01',     'Tanque de Anodização TA-100',        'anodização',       'LINHA-02', 90, 88.5, 'operational', 30, 1, 8.0, 3.0, '2024-07-03 08:00:00');
+
+-- Histórico de manutenções realizadas
+INSERT INTO maintenance_history (id, equipment_id, maintenance_type, scheduled_date, start_date, end_date, duration_hours, description, actions_performed, parts_replaced, labor_hours, cost_brl, technician, status, notes) VALUES
+-- CNC-03 (equipamento em atenção, 2 manutenções recentes)
+('MNT-2024-0142', 'CNC-03', 'preventiva',
+ '2024-06-15 08:00:00', '2024-06-15 08:00:00', '2024-06-15 14:30:00', 6.5,
+ 'Manutenção preventiva semestral conforme plano PM-001. Inspeção geral do centro de usinagem.',
+ ARRAY['Inspeção de guias lineares', 'Verificação de alinhamento do spindle', 'Troca de óleo do cabeçote', 'Calibração geométrica', 'Limpeza de filtros de refrigeração', 'Atualização do software CNC para v4.2.1'],
+ ARRAY['Óleo hidráulico ISO 46 (20L)', 'Filtro de óleo hidráulico', 'Filtro de ar comprimido'],
+ 6.5, 2850.00, 'Carlos Mendes (técnico senior)', 'concluida',
+ 'Vibração no spindle detectada durante inspeção — agendada substituição de rolamento para próxima parada.'),
+
+('MNT-2024-0098', 'CNC-03', 'corretiva',
+ '2024-05-22 14:00:00', '2024-05-22 14:00:00', '2024-05-22 18:45:00', 4.75,
+ 'Intervenção corretiva por parada não planejada devido a alarme de superaquecimento no servo do eixo Z.',
+ ARRAY['Diagnóstico do alarme de superaquecimento', 'Limpeza do dissipador de calor do servo', 'Verificação da ventoinha', 'Teste funcional em vazio', 'Retorno à produção'],
+ ARRAY['Ventoinha 24V do servo eixo Z'],
+ 4.75, 1280.00, 'Rafael Souza (técnico pleno)', 'concluida',
+ 'Causa raiz: acúmulo de cavacos obstruindo a ventoinha. Recomendada limpeza semanal da região.'),
+
+-- CNC-05 (equipamento novo, manutenção de rotina)
+('MNT-2024-0156', 'CNC-05', 'preventiva',
+ '2024-07-10 08:00:00', '2024-07-10 08:00:00', '2024-07-10 12:00:00', 4.0,
+ 'Manutenção preventiva mensal do Centro de Usinagem 5 Eixos VX-700.',
+ ARRAY['Verificação de tensão das correias', 'Lubrificação dos eixos rotativos (A/C)', 'Check de pressão pneumática', 'Teste dos interlocks de segurança', 'Verificação do changer automático de ferramentas'],
+ ARRAY['Graxa especial EP-2 (0.5kg)'],
+ 4.0, 680.00, 'Ana Paula Silva (técnica pleno)', 'concluida',
+ 'Equipamento em excelente estado. Próxima preventiva em 10/08/2024.'),
+
+-- SERRA-01
+('MNT-2024-0148', 'SERRA-01', 'preventiva',
+ '2024-07-05 08:00:00', '2024-07-05 08:00:00', '2024-07-05 11:30:00', 3.5,
+ 'Manutenção preventiva mensal da Serra CNC SC-300.',
+ ARRAY['Troca de lâmina bimetálica', 'Ajuste de tensão da lâmina', 'Lubrificação de guias', 'Calibração do sistema de refrigeração'],
+ ARRAY['Lâmina bimetálica M42 (1un)', 'Fluido de corte (5L)'],
+ 3.5, 950.00, 'Rafael Souza (técnico pleno)', 'concluida',
+ 'Lâmina substituída antes do desgaste crítico. Vida útil estimada: 180 horas.'),
+
+-- RETIFICA-01
+('MNT-2024-0138', 'RETIFICA-01', 'preventiva',
+ '2024-06-20 08:00:00', '2024-06-20 08:00:00', '2024-06-20 16:00:00', 8.0,
+ 'Manutenção preventiva trimestral com dressagem do rebolo e calibração dimensional.',
+ ARRAY['Dressagem do rebolo abrasivo', 'Calibração dimensional com padrões rastreáveis', 'Verificação do alinhamento do cabeçote', 'Inspeção do sistema de refrigeração', 'Balanceamento do rebolo'],
+ ARRAY['Rebolo abrasivo grão 120 (reposição preventiva)', 'Óleo lubrificante de cabeçote (2L)'],
+ 8.0, 1950.00, 'Carlos Mendes (técnico senior)', 'concluida',
+ 'Equipamento mantido dentro das especificações de precisão (±0.005mm).'),
+
+-- FORNO-01
+('MNT-2024-0152', 'FORNO-01', 'preventiva',
+ '2024-07-08 06:00:00', '2024-07-08 06:00:00', '2024-07-08 18:00:00', 12.0,
+ 'Manutenção preventiva semestral do Forno de Tratamento Térmico FT-400. Parada programada.',
+ ARRAY['Inspeção de resistências elétricas', 'Verificação de termopares e calibração', 'Limpeza da câmara de aquecimento', 'Teste de estanqueidade da atmosfera controlada', 'Verificação do sistema de controle PID', 'Auditoria de conformidade AMS2750'],
+ ARRAY['Termopar tipo K (2un)', 'Junta de vedação da porta', 'Lã cerâmica isolante (5m²)'],
+ 12.0, 8500.00, 'Empresa terceirizada: TermoTech Ltda', 'concluida',
+ 'Forno aprovado em auditoria AMS2750 classe 2. Próxima calibração em 6 meses.'),
+
+-- PRENSA-01
+('MNT-2024-0145', 'PRENSA-01', 'preventiva',
+ '2024-07-01 08:00:00', '2024-07-01 08:00:00', '2024-07-01 13:00:00', 5.0,
+ 'Manutenção preventiva mensal da Prensa Hidráulica PH-200.',
+ ARRAY['Verificação de pressão do sistema hidráulico', 'Troca de filtro de retorno', 'Inspeção de mangueiras e conexões', 'Ajuste dos batentes de segurança', 'Limpeza do reservatório de óleo'],
+ ARRAY['Filtro de retorno hidráulico', 'Óleo hidráulico ISO 46 (reposição 10L)'],
+ 5.0, 1420.00, 'Rafael Souza (técnico pleno)', 'concluida',
+ 'Pressão operacional estável em 180 bar.'),
+
+-- BROCH-01
+('MNT-2024-0141', 'BROCH-01', 'preventiva',
+ '2024-06-28 08:00:00', '2024-06-28 08:00:00', '2024-06-28 12:30:00', 4.5,
+ 'Manutenção preventiva mensal da Brochadeira Vertical BV-200.',
+ ARRAY['Inspeção e afiação das brochas', 'Verificação do sistema de tração hidráulica', 'Lubrificação das guias', 'Teste de força de brocheamento'],
+ ARRAY['Fluido hidráulico ISO 46 (3L)', 'Graxa para guias (0.2kg)'],
+ 4.5, 890.00, 'Ana Paula Silva (técnica pleno)', 'concluida',
+ 'Brochas enviadas para afiação externa — retorno em 03/07/2024.'),
+
+-- ANOD-01
+('MNT-2024-0147', 'ANOD-01', 'preventiva',
+ '2024-07-03 08:00:00', '2024-07-03 08:00:00', '2024-07-03 14:00:00', 6.0,
+ 'Manutenção preventiva quinzenal do Tanque de Anodização TA-100.',
+ ARRAY['Análise química do banho eletrolítico', 'Ajuste de pH e concentração', 'Limpeza dos eletrodos de chumbo', 'Calibração da fonte retificadora', 'Verificação do sistema de refrigeração'],
+ ARRAY['Ácido sulfúrico para reposição (20L)', 'Eletrodo de chumbo (reposição parcial)'],
+ 6.0, 2100.00, 'Empresa terceirizada: QuimProcess', 'concluida',
+ 'Banho aprovado. Concentração mantida em 180g/L.');
 
 INSERT INTO production_orders VALUES
 ('OP-2024-0451', 'PROD-001', 3000, 'LINHA-01', '2024-07-15', '2024-07-19', 'em_andamento', 65, 'high'),
 ('OP-2024-0452', 'PROD-002', 1500, 'LINHA-02', '2024-07-16', '2024-07-18', 'em_andamento', 40, 'normal'),
-('OP-2024-0453', 'PROD-003', 2000, 'LINHA-01', '2024-07-22', '2024-07-25', 'planned', 0, 'normal');
+('OP-2024-0453', 'PROD-003', 2000, 'LINHA-01', '2024-07-22', '2024-07-25', 'planned', 0, 'normal'),
+('OP-2024-0454', 'PROD-004', 800,  'LINHA-01', '2024-07-20', '2024-07-22', 'planned', 0, 'normal'),
+('OP-2024-0455', 'PROD-005', 5000, 'LINHA-01', '2024-07-25', '2024-07-30', 'planned', 0, 'normal'),
+('OP-2024-0456', 'PROD-006', 500,  'LINHA-01', '2024-07-18', '2024-07-23', 'em_andamento', 25, 'high'),
+('OP-2024-0457', 'PROD-007', 1200, 'LINHA-02', '2024-07-20', '2024-07-24', 'planned', 0, 'normal'),
+('OP-2024-0458', 'PROD-008', 2500, 'LINHA-02', '2024-07-22', '2024-07-25', 'planned', 0, 'low');
 
 -- ============================================
 -- Registros de Qualidade (NCRs)
@@ -334,7 +479,12 @@ INSERT INTO quality_records VALUES
 ('NCR-2024-085', 'PROD-001', 'superficial', 'minor', 'Contaminação no banho químico', 'em_análise', NOW() - INTERVAL '7 days'),
 ('NCR-2024-087', 'PROD-002', 'funcional', 'major', 'Rugosidade Ra 1.2 (spec: Ra 0.8)', 'em_análise', NOW() - INTERVAL '5 days'),
 ('NCR-2024-089', 'PROD-001', 'dimensional', 'major', 'Desgaste de ferramenta CNC-03', 'em_análise', NOW() - INTERVAL '2 days'),
-('NCR-2024-090', 'PROD-001', 'cosmético', 'minor', 'Marcas de manuseio pós-usinagem', 'aberta', NOW() - INTERVAL '1 day');
+('NCR-2024-090', 'PROD-001', 'cosmético', 'minor', 'Marcas de manuseio pós-usinagem', 'aberta', NOW() - INTERVAL '1 day'),
+('NCR-2024-091', 'PROD-004', 'dimensional', 'minor', 'Furação fora de posição 0.08mm em 3 peças', 'em_análise', NOW() - INTERVAL '6 days'),
+('NCR-2024-092', 'PROD-006', 'funcional', 'critical', 'Perfil de came fora de especificação - desvio de 0.03mm na rampa', 'aberta', NOW() - INTERVAL '4 days'),
+('NCR-2024-093', 'PROD-005', 'dimensional', 'minor', 'Diâmetro 0.005mm acima do limite h6', 'corrigida', NOW() - INTERVAL '8 days'),
+('NCR-2024-094', 'PROD-007', 'funcional', 'major', 'Estrias com folga excessiva no acoplamento', 'em_análise', NOW() - INTERVAL '3 days'),
+('NCR-2024-095', 'PROD-008', 'superficial', 'minor', 'Anodização com manchas irregulares em lote', 'aberta', NOW() - INTERVAL '2 days');
 
 -- ============================================
 -- Decisões dos Agentes (histórico demo)
@@ -446,6 +596,46 @@ SELECT
     '°C', 75, 'normal', gs
 FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
 
+-- CNC-05 (5 eixos): sensores estáveis (equipamento novo)
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'CNC-05', 'vibration', ROUND((2.0 + (RANDOM() * 0.4 - 0.2))::numeric, 3), 'mm/s', 8.0, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'CNC-05', 'temperature', ROUND((35 + (RANDOM() * 3 - 1.5))::numeric, 1), '°C', 75, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'CNC-05', 'spindle_current', ROUND((8.0 + (RANDOM() * 2 - 1))::numeric, 2), 'A', 15, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+-- FORNO-01: temperatura do forno (alta por natureza, threshold 950°C)
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'FORNO-01', 'temperature', ROUND((850 + (RANDOM() * 20 - 10))::numeric, 1), '°C', 950, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'FORNO-01', 'gas_pressure', ROUND((2.5 + (RANDOM() * 0.3 - 0.15))::numeric, 2), 'bar', 3.5, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+-- BROCH-01: força de brocheamento e vibração
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'BROCH-01', 'vibration', ROUND((3.2 + (RANDOM() * 0.5 - 0.25))::numeric, 3), 'mm/s', 8.0, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'BROCH-01', 'force', ROUND((4500 + (RANDOM() * 300 - 150))::numeric, 0), 'N', 6000, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+-- ANOD-01: temperatura do banho e pH
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'ANOD-01', 'temperature', ROUND((22 + (RANDOM() * 2 - 1))::numeric, 1), '°C', 30, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
+INSERT INTO sensor_readings (equipment_id, sensor_type, value, unit, threshold, status, read_at)
+SELECT 'ANOD-01', 'ph_level', ROUND((1.2 + (RANDOM() * 0.3 - 0.15))::numeric, 2), 'pH', 2.0, 'normal', gs
+FROM generate_series(NOW() - INTERVAL '48 hours', NOW(), INTERVAL '15 minutes') AS gs;
+
 -- ============================================
 -- Logs de Automação (histórico simulado 48h)
 -- ============================================
@@ -481,6 +671,7 @@ CREATE INDEX idx_sensor_readings_type ON sensor_readings(equipment_id, sensor_ty
 CREATE INDEX idx_production_orders_status ON production_orders(status);
 CREATE INDEX idx_quality_records_product ON quality_records(product_id, created_at);
 CREATE INDEX idx_quality_records_status ON quality_records(status);
+CREATE INDEX idx_maintenance_history_equipment ON maintenance_history(equipment_id, end_date DESC);
 CREATE INDEX idx_automation_logs_workflow ON automation_logs(workflow_name, created_at);
 CREATE INDEX idx_automation_logs_status ON automation_logs(status, created_at);
 CREATE INDEX idx_materials_abc ON materials(abc_class);

@@ -281,34 +281,27 @@ def populate_graph():
         logger.info("Criando relações inferidas...")
 
         # Equipamentos que produzem produtos (via ordens de produção)
-        # Inferido: se OP está na LINHA-01 e equipamento está na LINHA-01
-        equip_lines = {
-            "CNC-03": "LINHA-01", "SERRA-01": "LINHA-01",
-            "PRENSA-01": "LINHA-02", "RETIFICA-01": "LINHA-01",
-        }
-        for eid, line in equip_lines.items():
-            # Equipamentos da mesma linha que tem OPs produzindo produtos
-            line_orders = [o for o in orders if o.get("line_id") == line]
+        # Inferido: se OP está na mesma linha que o equipamento (lê line_id do banco)
+        for eq in equipment:
+            eq_line = eq.get("line_id")
+            if not eq_line:
+                continue
+            line_orders = [o for o in orders if o.get("line_id") == eq_line]
             for o in line_orders:
                 session.run(
                     """MATCH (e:Equipamento {id: $eid}), (p:Produto {id: $pid})
                        MERGE (e)-[:PRODUZ]->(p)""",
-                    eid=eid, pid=o["product_id"],
+                    eid=eq["id"], pid=o["product_id"],
                 )
 
         # NCRs originadas em equipamentos (inferido: NCRs de produtos
         # que são produzidos em equipamentos com status != operational)
         problem_equip = [e for e in equipment if e.get("status") != "operational"]
         for eq in problem_equip:
-            eq_products = _pg_query(f"""
-                SELECT DISTINCT po.product_id FROM production_orders po
-                WHERE po.line_id IN (
-                    SELECT CASE
-                        WHEN '{eq["id"]}' IN ('CNC-03', 'SERRA-01', 'RETIFICA-01') THEN 'LINHA-01'
-                        WHEN '{eq["id"]}' = 'PRENSA-01' THEN 'LINHA-02'
-                    END
-                )
-            """)
+            eq_line = eq.get("line_id", "")
+            eq_products = _pg_query(
+                "SELECT DISTINCT po.product_id FROM production_orders po WHERE po.line_id = %s",
+            ) if not eq_line else _pg_query(f"SELECT DISTINCT po.product_id FROM production_orders po WHERE po.line_id = '{eq_line}'")
             for ep in eq_products:
                 # NCRs desse produto → originadas nesse equipamento
                 product_ncrs = [n for n in ncrs if n["product_id"] == ep["product_id"]
@@ -323,11 +316,17 @@ def populate_graph():
         # Inferido: insertos e óleo refrigerante → CNC, rebolo → retífica
         consumo_map = [
             ("MP-004", "CNC-03", "refrigerante"),
+            ("MP-004", "CNC-05", "refrigerante"),
             ("MP-005", "CNC-03", "ferramenta_corte"),
+            ("MP-005", "CNC-05", "ferramenta_corte"),
             ("MP-007", "PRENSA-01", "fluido_hidraulico"),
             ("MP-007", "CNC-03", "fluido_hidraulico"),
+            ("MP-007", "BROCH-01", "fluido_hidraulico"),
             ("MP-010", "RETIFICA-01", "abrasivo"),
             ("MP-006", "CNC-03", "peca_reposicao"),
+            ("MP-006", "CNC-05", "peca_reposicao"),
+            ("MP-011", "BROCH-01", "lubrificante"),
+            ("MP-012", "PRENSA-01", "filtro"),
         ]
         for mid, eid, tipo in consumo_map:
             session.run(
